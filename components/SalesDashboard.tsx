@@ -361,9 +361,9 @@ const SalesDashboard: React.FC = () => {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {/* Верхняя секция */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
-          {/* Список транзакций - в виде таблицы с фиксированными колонками */}
-          <div style={{ width: '33%' }}>
-            {transactions.slice(-10).map((t, i) => (
+          {/* Список всех транзакций - в виде таблицы с фиксированными колонками и прокруткой */}
+          <div style={{ width: '33%', maxHeight: 'calc(100vh - 110px)', overflowY: 'auto' }}>
+            {transactions.map((t, i) => (
               <div key={i} style={{ 
                 display: 'flex', 
                 color: '#fb923c', 
