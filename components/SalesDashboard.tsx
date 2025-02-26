@@ -32,20 +32,20 @@ interface ManagerSummary {
 // Тестовые данные для запасного варианта, если API недоступен
 const getMockData = (): Array<Array<string>> => {
   return [
-    ['Ольга Ф.', '30000', 'Смета'],
-    ['Ольга Ф.', '300', 'Смета'],
-    ['Планди Б.', '300', 'Смета'],
-    ['Планди Б.', '300', 'Смета'],
-    ['Планди Б.', '300', 'Смета'],
-    ['Татьяна', '15583', 'Смета'],
-    ['Валерия', '300', 'Смета'],
-    ['Лина', '17880', 'Заказ'],
-    ['Ольга Ф.', '35400', 'Заказ'],
-    ['Лина', '9300', 'Заказ'],
-    ['Филипп', '8500', 'Заказ'],
-    ['Филипп', '7200', 'Заказ'],
-    ['Планди Б.', '300', 'Смета'],
-    ['Наталья', '4500', 'Заказ']
+    ['Ольга Ф.', '€30000,00', 'Смета'],
+    ['Ольга Ф.', '€300,00', 'Смета'],
+    ['Планди Б.', '€300,00', 'Смета'],
+    ['Планди Б.', '€300,00', 'Смета'],
+    ['Планди Б.', '€300,00', 'Смета'],
+    ['Татьяна', '€15583,00', 'Смета'],
+    ['Валерия', '€300,00', 'Смета'],
+    ['Лина', '€17880,00', 'Заказ'],
+    ['Ольга Ф.', '€35400,00', 'Заказ'],
+    ['Лина', '€9300,00', 'Заказ'],
+    ['Филипп', '€8500,00', 'Заказ'],
+    ['Филипп', '€7200,00', 'Заказ'],
+    ['Планди Б.', '€300,00', 'Смета'],
+    ['Наталья', '€4500,00', 'Заказ']
   ];
 };
 
@@ -84,21 +84,40 @@ const SalesDashboard: React.FC = () => {
   // Функция для получения данных из Google Sheets
   const fetchSheetData = async (): Promise<Array<Array<string>>> => {
     try {
-      // Активное подключение к Google Sheets API
+      console.log("Trying to fetch sheet data...");
+      
+      // Прямой запрос к Google Sheets API
       const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          },
+        }
       );
 
+      console.log("API Response status:", response.status);
+      
       if (!response.ok) {
-        console.error('Google Sheets API Error:', response.status);
-        throw new Error('Failed to fetch data');
+        throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      return data.values || [];
+      console.log("Fetched data from Google Sheets:", data);
+      
+      // Проверка на наличие values в ответе
+      if (!data.values || !Array.isArray(data.values) || data.values.length === 0) {
+        console.warn("No data received from Google Sheets, using mock data");
+        return getMockData();
+      }
+      
+      return data.values;
     } catch (error) {
       console.error('Error fetching sheet data:', error);
+      
       // В случае ошибки возвращаем тестовые данные
+      console.log("Returning mock data due to error");
       return getMockData();
     }
   };
@@ -115,20 +134,55 @@ const SalesDashboard: React.FC = () => {
     return { name: maxName, count: maxCount };
   };
 
+  // Функция для обработки сырых данных из таблицы
   const processSheetData = (rawData: Array<Array<string>>): {
     transactions: Transaction[];
     champions: ChampionData;
     summary: ManagerSummary[];
     total: number;
   } => {
-    // Преобразование сырых данных таблицы в объекты транзакций
-    const transactions = rawData.map(row => ({
-      name: row[0] || '',
-      amount: parseFloat(String(row[1] || '0').replace(/\s+/g, '').replace(',', '.')) || 0,
-      type: row[2] || ''
-    }));
+    console.log("Raw sheet data:", rawData); // Отладочный вывод
 
-    console.log("Parsed transactions:", transactions);
+    // Преобразование сырых данных таблицы в объекты транзакций
+    const transactions = rawData.map(row => {
+      // Проверяем наличие всех нужных данных в строке
+      if (!row || row.length < 3) {
+        console.log("Invalid row data:", row);
+        return {
+          name: '',
+          amount: 0,
+          type: ''
+        };
+      }
+      
+      // Корректно обрабатываем сумму, удаляя все кроме цифр, точек и запятых
+      let amountStr = row[1] || '0';
+      
+      // Если сумма в формате "€300,00", извлекаем только числовую часть
+      if (amountStr.startsWith('€')) {
+        amountStr = amountStr.substring(1);
+      }
+      
+      // Заменяем европейский формат (запятая - разделитель) на американский (точка)
+      amountStr = amountStr.replace(/\s+/g, '').replace(',', '.');
+      
+      // Если есть другие нецифровые символы кроме точки, удаляем их
+      amountStr = amountStr.replace(/[^0-9.]/g, '');
+      
+      // Преобразуем в число
+      const amount = parseFloat(amountStr) || 0;
+      
+      return {
+        name: row[0] || '',
+        amount: amount,
+        type: row[2] || ''
+      };
+    });
+
+    // Фильтруем невалидные транзакции
+    const validTransactions = transactions.filter(t => t.name && (t.type === 'Смета' || t.type === 'Заказ'));
+
+    console.log("Parsed transactions:", validTransactions); // Отладочный вывод
 
     // Расчёт данных для чемпионов и сводной таблицы
     const estimateCount = new Map<string, number>();
@@ -153,7 +207,7 @@ const SalesDashboard: React.FC = () => {
     });
 
     // Обработка каждой транзакции
-    transactions.forEach(t => {
+    validTransactions.forEach(t => {
       if (!t.name) return;
 
       // Подсчёт смет
@@ -192,25 +246,44 @@ const SalesDashboard: React.FC = () => {
       }
     });
 
+    // Логируем данные по каждому менеджеру для отладки
+    console.log("Manager summary data:");
+    managerSummary.forEach((data, name) => {
+      console.log(`${name}: ${data.totalAmount}€ (${data.estimates} смет, ${data.orders} заказов)`);
+    });
+
     // Поиск самой высокой суммы для каждого менеджера
     const highestAmountMap = new Map<string, number>();
     amountByManager.forEach((amounts, manager) => {
-      highestAmountMap.set(manager, Math.max(...amounts, 0));
+      if (amounts.length > 0) {
+        highestAmountMap.set(manager, Math.max(...amounts));
+      } else {
+        highestAmountMap.set(manager, 0);
+      }
     });
 
     // Определение чемпионов
+    const estimatesChampion = getMaxEntry(estimateCount);
     const highestAmountEntry = getMaxEntry(highestAmountMap);
+    const ordersChampion = getMaxEntry(orderCount);
+
     const newChampions = {
-      mostEstimates: getMaxEntry(estimateCount),
+      mostEstimates: estimatesChampion,
       highestAmount: { name: highestAmountEntry.name, amount: highestAmountEntry.count },
-      mostOrders: getMaxEntry(orderCount)
+      mostOrders: ordersChampion
     };
 
+    console.log("Champions:", newChampions); // Отладочный вывод
+
+    // Вычисляем общую сумму
+    const totalAmount = validTransactions.reduce((sum, t) => sum + t.amount, 0);
+    console.log("Total amount:", totalAmount); // Отладочный вывод
+
     return {
-      transactions,
+      transactions: validTransactions,
       champions: newChampions,
       summary: Array.from(managerSummary.values()),
-      total: transactions.reduce((sum, t) => sum + t.amount, 0)
+      total: totalAmount
     };
   };
 
