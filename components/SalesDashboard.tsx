@@ -45,7 +45,9 @@ const getMockData = (): Array<Array<string>> => {
     ['Филипп', '€8500,00', 'Заказ'],
     ['Филипп', '€7200,00', 'Заказ'],
     ['Планди Б.', '€300,00', 'Смета'],
-    ['Наталья', '€4500,00', 'Заказ']
+    ['Наталья', '€4500,00', 'Заказ'],
+    ['Дария Б.', '€300,00', 'Доплата'],
+    ['Ольга Ф.', '€200,00', 'Доплата']
   ];
 };
 
@@ -179,8 +181,8 @@ const SalesDashboard: React.FC = () => {
       };
     });
 
-    // Фильтруем невалидные транзакции
-    const validTransactions = transactions.filter(t => t.name && (t.type === 'Смета' || t.type === 'Заказ'));
+    // Фильтруем невалидные транзакции, включая статус "Доплата"
+    const validTransactions = transactions.filter(t => t.name && (t.type === 'Смета' || t.type === 'Заказ' || t.type === 'Доплата'));
 
     console.log("Parsed transactions:", validTransactions); // Отладочный вывод
 
@@ -219,7 +221,7 @@ const SalesDashboard: React.FC = () => {
         orderCount.set(t.name, (orderCount.get(t.name) || 0) + 1);
       }
       
-      // Отслеживание всех сумм по менеджеру
+      // Отслеживание всех сумм по менеджеру, включая доплаты
       if (!amountByManager.has(t.name)) {
         amountByManager.set(t.name, []);
       }
@@ -242,6 +244,7 @@ const SalesDashboard: React.FC = () => {
       if (summary) {
         if (t.type === 'Смета') summary.estimates++;
         if (t.type === 'Заказ') summary.orders++;
+        // Учитываем все суммы, включая доплаты
         summary.totalAmount += t.amount;
       }
     });
@@ -275,7 +278,7 @@ const SalesDashboard: React.FC = () => {
 
     console.log("Champions:", newChampions); // Отладочный вывод
 
-    // Вычисляем общую сумму
+    // Вычисляем общую сумму (включая доплаты)
     const totalAmount = validTransactions.reduce((sum, t) => sum + t.amount, 0);
     console.log("Total amount:", totalAmount); // Отладочный вывод
 
@@ -359,10 +362,10 @@ const SalesDashboard: React.FC = () => {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* Верхняя секция */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
-          {/* Список всех транзакций - в виде таблицы с фиксированными колонками и прокруткой */}
-          <div style={{ width: '33%', maxHeight: 'calc(100vh - 110px)', overflowY: 'auto' }}>
+        {/* Верхняя секция с двумя колонками */}
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          {/* Левая колонка - список транзакций со скроллом */}
+          <div style={{ width: '33%', maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
             {transactions.map((t, i) => (
               <div key={i} style={{ 
                 display: 'flex', 
@@ -376,7 +379,7 @@ const SalesDashboard: React.FC = () => {
             ))}
           </div>
 
-          {/* Блок с чемпионами */}
+          {/* Правая колонка - информация о чемпионах */}
           <div style={{ width: '67%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ 
               display: 'flex', 
@@ -390,7 +393,7 @@ const SalesDashboard: React.FC = () => {
               <Trophy style={{ width: '24px', height: '24px', color: '#eab308', marginLeft: '8px' }} />
             </div>
 
-            <div style={{ display: 'flex', width: '100%', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', width: '100%', justifyContent: 'center', marginBottom: '20px' }}>
               <div style={{ width: '350px' }}>
                 <div style={{ 
                   display: 'flex', 
@@ -421,27 +424,25 @@ const SalesDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Сводная таблица - центрирована */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-          <div style={{ width: '500px' }}>
-            <div style={{ display: 'flex', marginBottom: '8px' }}>
-              <div style={{ width: '170px', color: '#fb923c', fontWeight: 'bold' }}>Менеджер</div>
-              <div style={{ width: '100px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Смет</div>
-              <div style={{ width: '130px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Сумма</div>
-              <div style={{ width: '100px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Заказов</div>
-            </div>
-
-            {summaryData.map((manager, i) => (
-              <div key={i} style={{ display: 'flex', marginBottom: '3px' }}>
-                <div style={{ width: '170px', color: '#fb923c' }}>{manager.manager}</div>
-                <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{manager.estimates}</div>
-                <div style={{ width: '130px', color: '#fb923c', textAlign: 'center' }}>{formatNumber(manager.totalAmount)} €</div>
-                <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{manager.orders}</div>
+            {/* Сводная таблица - фиксированная под чемпионами */}
+            <div style={{ width: '500px' }}>
+              <div style={{ display: 'flex', marginBottom: '8px' }}>
+                <div style={{ width: '170px', color: '#fb923c', fontWeight: 'bold' }}>Менеджер</div>
+                <div style={{ width: '100px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Смет</div>
+                <div style={{ width: '130px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Сумма</div>
+                <div style={{ width: '100px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Заказов</div>
               </div>
-            ))}
+
+              {summaryData.map((manager, i) => (
+                <div key={i} style={{ display: 'flex', marginBottom: '3px' }}>
+                  <div style={{ width: '170px', color: '#fb923c' }}>{manager.manager}</div>
+                  <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{manager.estimates}</div>
+                  <div style={{ width: '130px', color: '#fb923c', textAlign: 'center' }}>{formatNumber(manager.totalAmount)} €</div>
+                  <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{manager.orders}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
