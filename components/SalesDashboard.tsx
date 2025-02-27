@@ -63,6 +63,7 @@ const SalesDashboard: React.FC = () => {
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastTransactionCountRef = useRef<number>(0);
+  const summaryContainerRef = useRef<HTMLDivElement>(null);
 
   // Безопасная функция форматирования с правильным типом для параметра
   const formatNumber = (num: number | undefined | null): string => {
@@ -361,88 +362,99 @@ const SalesDashboard: React.FC = () => {
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* Верхняя секция с двумя колонками */}
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          {/* Левая колонка - список транзакций со скроллом */}
-          <div style={{ width: '33%', maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
-            {transactions.map((t, i) => (
-              <div key={i} style={{ 
-                display: 'flex', 
-                color: '#fb923c', 
-                marginBottom: '5px', 
-                fontSize: '16px'
-              }}>
-                <div style={{ width: '110px' }}>{t.name}</div>
-                <div style={{ width: '90px', textAlign: 'right' }}>{formatNumber(t.amount)} €</div>
-              </div>
-            ))}
+      <div style={{ display: 'flex', height: 'calc(100vh - 32px)' }}>
+        {/* Левая колонка - список транзакций, вытянутый до нижней границы */}
+        <div style={{ 
+          width: '33%', 
+          overflowY: 'auto',
+          paddingRight: '16px',
+          height: '100%', // Растягиваем на всю высоту
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {transactions.map((t, i) => (
+            <div key={i} style={{ 
+              display: 'flex', 
+              color: '#fb923c', 
+              marginBottom: '5px', 
+              fontSize: '16px'
+            }}>
+              <div style={{ width: '110px' }}>{t.name}</div>
+              <div style={{ width: '90px', textAlign: 'right' }}>{formatNumber(t.amount)} €</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Правая колонка - информация о чемпионах и сводная таблица */}
+        <div style={{ 
+          width: '67%', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center'
+        }}>
+          {/* Заголовок чемпионов */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            marginBottom: '20px', 
+            color: '#fb923c', 
+            fontSize: '24px' 
+          }}>
+            <Trophy style={{ width: '24px', height: '24px', color: '#eab308', marginRight: '8px' }} />
+            ЧЕМПИОНЫ МЕСЯЦА
+            <Trophy style={{ width: '24px', height: '24px', color: '#eab308', marginLeft: '8px' }} />
           </div>
 
-          {/* Правая колонка - информация о чемпионах */}
-          <div style={{ width: '67%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              marginBottom: '20px', 
-              color: '#fb923c', 
-              fontSize: '24px' 
-            }}>
-              <Trophy style={{ width: '24px', height: '24px', color: '#eab308', marginRight: '8px' }} />
-              ЧЕМПИОНЫ МЕСЯЦА
-              <Trophy style={{ width: '24px', height: '24px', color: '#eab308', marginLeft: '8px' }} />
-            </div>
-
-            <div style={{ display: 'flex', width: '100%', justifyContent: 'center', marginBottom: '20px' }}>
-              <div style={{ width: '350px' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  marginBottom: '5px',
-                  alignItems: 'center'
-                }}>
-                  <div style={{ width: '180px' }}>Больше всего смет:</div>
-                  <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{champions.mostEstimates.name}</div>
-                  <div style={{ width: '70px', color: '#fb923c', textAlign: 'right' }}>{champions.mostEstimates.count}</div>
-                </div>
-                <div style={{ 
-                  display: 'flex', 
-                  marginBottom: '5px',
-                  alignItems: 'center'
-                }}>
-                  <div style={{ width: '180px' }}>Самый высокий чек:</div>
-                  <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{champions.highestAmount.name}</div>
-                  <div style={{ width: '70px', color: '#fb923c', textAlign: 'right' }}>{formatNumber(champions.highestAmount.amount)} €</div>
-                </div>
-                <div style={{ 
-                  display: 'flex', 
-                  marginBottom: '5px',
-                  alignItems: 'center'
-                }}>
-                  <div style={{ width: '180px' }}>Больше всего заказов:</div>
-                  <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{champions.mostOrders.name}</div>
-                  <div style={{ width: '70px', color: '#fb923c', textAlign: 'right' }}>{champions.mostOrders.count}</div>
-                </div>
+          {/* Таблица чемпионов */}
+          <div style={{ display: 'flex', width: '100%', justifyContent: 'center', marginBottom: '30px' }}>
+            <div style={{ width: '350px' }}>
+              <div style={{ 
+                display: 'flex', 
+                marginBottom: '5px',
+                alignItems: 'center'
+              }}>
+                <div style={{ width: '180px' }}>Больше всего смет:</div>
+                <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{champions.mostEstimates.name}</div>
+                <div style={{ width: '70px', color: '#fb923c', textAlign: 'right' }}>{champions.mostEstimates.count}</div>
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                marginBottom: '5px',
+                alignItems: 'center'
+              }}>
+                <div style={{ width: '180px' }}>Самый высокий чек:</div>
+                <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{champions.highestAmount.name}</div>
+                <div style={{ width: '70px', color: '#fb923c', textAlign: 'right' }}>{formatNumber(champions.highestAmount.amount)} €</div>
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                marginBottom: '5px',
+                alignItems: 'center'
+              }}>
+                <div style={{ width: '180px' }}>Больше всего заказов:</div>
+                <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{champions.mostOrders.name}</div>
+                <div style={{ width: '70px', color: '#fb923c', textAlign: 'right' }}>{champions.mostOrders.count}</div>
               </div>
             </div>
+          </div>
 
-            {/* Сводная таблица - фиксированная под чемпионами */}
-            <div style={{ width: '500px' }}>
-              <div style={{ display: 'flex', marginBottom: '8px' }}>
-                <div style={{ width: '170px', color: '#fb923c', fontWeight: 'bold' }}>Менеджер</div>
-                <div style={{ width: '100px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Смет</div>
-                <div style={{ width: '130px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Сумма</div>
-                <div style={{ width: '100px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Заказов</div>
-              </div>
-
-              {summaryData.map((manager, i) => (
-                <div key={i} style={{ display: 'flex', marginBottom: '3px' }}>
-                  <div style={{ width: '170px', color: '#fb923c' }}>{manager.manager}</div>
-                  <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{manager.estimates}</div>
-                  <div style={{ width: '130px', color: '#fb923c', textAlign: 'center' }}>{formatNumber(manager.totalAmount)} €</div>
-                  <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{manager.orders}</div>
-                </div>
-              ))}
+          {/* Сводная таблица */}
+          <div ref={summaryContainerRef} style={{ width: '500px' }}>
+            <div style={{ display: 'flex', marginBottom: '8px' }}>
+              <div style={{ width: '170px', color: '#fb923c', fontWeight: 'bold' }}>Менеджер</div>
+              <div style={{ width: '100px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Смет</div>
+              <div style={{ width: '130px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Сумма</div>
+              <div style={{ width: '100px', color: '#fb923c', fontWeight: 'bold', textAlign: 'center' }}>Заказов</div>
             </div>
+
+            {summaryData.map((manager, i) => (
+              <div key={i} style={{ display: 'flex', marginBottom: '3px' }}>
+                <div style={{ width: '170px', color: '#fb923c' }}>{manager.manager}</div>
+                <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{manager.estimates}</div>
+                <div style={{ width: '130px', color: '#fb923c', textAlign: 'center' }}>{formatNumber(manager.totalAmount)} €</div>
+                <div style={{ width: '100px', color: '#fb923c', textAlign: 'center' }}>{manager.orders}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
