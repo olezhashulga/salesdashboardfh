@@ -9,9 +9,8 @@ const RANGE = 'A2:C1000';
 // Целевая сумма для прогресс-бара
 const TARGET_AMOUNT = 600000;
 
-// Базовый, короткий звук фанфар в формате base64 (встроенный)
-// Это небольшой звук фанфар, который гарантированно будет работать
-const FALLBACK_SOUND = "data:audio/mp3;base64,SUQzAwAAAAAAPlRJVDIAAAATAAAAVHJ1bXBldCBGYW5mYXJlIDAAVFhYWAAAACQAAABodHRwczovL2ZyZWVzb3VuZC5vcmcvOTg0MjcvZG93bmxvYWQAVEFMQgAAABMAAABUcnVtcGV0IEZhbmZhcmUgMABUWUVSAAAABQAAACmwARZUQ09OAAAABwAAAFNGWCBFRkZFQ1RTAPBXAAA=";
+// URL внешнего звукового файла
+const EXTERNAL_SOUND_URL = 'https://zvukipro.com/uploads/files/2019-10/1571643581_win31.mp3';
 
 // Интерфейсы для TypeScript
 interface Transaction {
@@ -65,10 +64,12 @@ const SalesDashboard: React.FC = () => {
   const [summaryData, setSummaryData] = useState<ManagerSummary[]>([]);
   const [notification, setNotification] = useState<Transaction | null>(null);
   const [totalAmount, setTotalAmount] = useState<number>(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const fallbackAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastTransactionCountRef = useRef<number>(0);
   const summaryContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Создаем рефы для звуковых элементов (основной и резервный)
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   // Безопасная функция форматирования с правильным типом для параметра
   const formatNumber = (num: number | undefined | null): string => {
@@ -81,59 +82,61 @@ const SalesDashboard: React.FC = () => {
     }
   };
 
-  // Создаем fallback аудио элемент при монтировании компонента
+  // Инициализация аудио элементов
   useEffect(() => {
-    // Создаем резервный аудио элемент с встроенным звуком
-    fallbackAudioRef.current = new Audio(FALLBACK_SOUND);
-    fallbackAudioRef.current.preload = "auto";
+    // Создаем элемент audio для звукового эффекта
+    const audioElement = new Audio(EXTERNAL_SOUND_URL);
+    audioElement.preload = 'auto';
+    audioElement.volume = 1.0;
     
-    // Предзагружаем звук
-    fallbackAudioRef.current.load();
+    // Сохраняем ссылку на элемент
+    audioElementRef.current = audioElement;
     
-    console.log("Fallback audio initialized");
+    // Загружаем звук
+    audioElement.load();
     
-    // Очистка при размонтировании
+    console.log("Инициализирован внешний звуковой файл:", EXTERNAL_SOUND_URL);
+    
+    // Очистка при размонтировании компонента
     return () => {
-      if (fallbackAudioRef.current) {
-        fallbackAudioRef.current.pause();
-        fallbackAudioRef.current = null;
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current.src = '';
+        audioElementRef.current = null;
       }
     };
   }, []);
 
-  // Функция для воспроизведения звука с резервным вариантом
+  // Функция для воспроизведения звука
   const playFanfare = (): void => {
-    console.log("Attempting to play fanfare sound");
+    console.log("Пытаемся воспроизвести звук");
     
-    // Сначала пробуем основной звук
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.load();
+    // Используем программное создание нового элемента Audio для каждого воспроизведения
+    // Это обходит многие проблемы с автовоспроизведением в браузерах
+    try {
+      const sound = new Audio(EXTERNAL_SOUND_URL);
+      sound.volume = 1.0;
       
-      audioRef.current.play().then(() => {
-        console.log("Main audio played successfully");
-      }).catch(e => {
-        console.error("Main audio failed, trying fallback:", e);
-        
-        // Если основной звук не воспроизвелся, используем резервный
-        if (fallbackAudioRef.current) {
-          fallbackAudioRef.current.currentTime = 0;
-          fallbackAudioRef.current.play().then(() => {
-            console.log("Fallback audio played successfully");
-          }).catch(err => {
-            console.error("Both audio sources failed:", err);
-          });
-        }
-      });
-    } else if (fallbackAudioRef.current) {
-      // Если основной аудиоэлемент недоступен, сразу используем резервный
-      console.log("No main audio, using fallback directly");
-      fallbackAudioRef.current.currentTime = 0;
-      fallbackAudioRef.current.play().catch(err => 
-        console.error("Fallback audio failed:", err)
-      );
-    } else {
-      console.error("No audio available for playback");
+      // Воспроизводим звук
+      const playPromise = sound.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          console.log("Звук успешно воспроизводится");
+        }).catch(error => {
+          console.error("Ошибка воспроизведения звука:", error);
+          
+          // Резервный вариант - пробуем использовать предзагруженный элемент
+          if (audioElementRef.current) {
+            audioElementRef.current.currentTime = 0;
+            audioElementRef.current.play().catch(e => {
+              console.error("Ошибка воспроизведения предзагруженного звука:", e);
+            });
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Исключение при воспроизведении звука:", e);
     }
   };
 
@@ -388,14 +391,24 @@ const SalesDashboard: React.FC = () => {
       padding: '16px', 
       position: 'relative' 
     }}>
-      {/* Аудио-элемент для воспроизведения фанфар */}
-      <audio 
-        ref={audioRef} 
-        src={`/torjestvennyie-fanfaryi-24685.mp3?v=${Date.now()}`}
-        preload="auto"
-        crossOrigin="anonymous"
-        onError={(e) => console.error("Audio loading error:", e)}
-      />
+      {/* Тестовая кнопка для проверки звука */}
+      <button 
+        onClick={playFanfare} 
+        style={{ 
+          position: 'fixed', 
+          top: '10px', 
+          right: '10px', 
+          zIndex: 1000,
+          padding: '8px 12px',
+          background: '#fb923c',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer'
+        }}
+      >
+        Тест звука
+      </button>
 
       {/* Уведомление о новой транзакции */}
       {notification && (
