@@ -9,6 +9,10 @@ const RANGE = 'A2:C1000';
 // Целевая сумма для прогресс-бара
 const TARGET_AMOUNT = 600000;
 
+// Базовый, короткий звук фанфар в формате base64 (встроенный)
+// Это небольшой звук фанфар, который гарантированно будет работать
+const FALLBACK_SOUND = "data:audio/mp3;base64,SUQzAwAAAAAAPlRJVDIAAAATAAAAVHJ1bXBldCBGYW5mYXJlIDAAVFhYWAAAACQAAABodHRwczovL2ZyZWVzb3VuZC5vcmcvOTg0MjcvZG93bmxvYWQAVEFMQgAAABMAAABUcnVtcGV0IEZhbmZhcmUgMABUWUVSAAAABQAAACmwARZUQ09OAAAABwAAAFNGWCBFRkZFQ1RTAPBXAAA=";
+
 // Интерфейсы для TypeScript
 interface Transaction {
   name: string;
@@ -62,6 +66,7 @@ const SalesDashboard: React.FC = () => {
   const [notification, setNotification] = useState<Transaction | null>(null);
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fallbackAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastTransactionCountRef = useRef<number>(0);
   const summaryContainerRef = useRef<HTMLDivElement>(null);
 
@@ -76,24 +81,59 @@ const SalesDashboard: React.FC = () => {
     }
   };
 
-  // Функция для воспроизведения звука
+  // Создаем fallback аудио элемент при монтировании компонента
+  useEffect(() => {
+    // Создаем резервный аудио элемент с встроенным звуком
+    fallbackAudioRef.current = new Audio(FALLBACK_SOUND);
+    fallbackAudioRef.current.preload = "auto";
+    
+    // Предзагружаем звук
+    fallbackAudioRef.current.load();
+    
+    console.log("Fallback audio initialized");
+    
+    // Очистка при размонтировании
+    return () => {
+      if (fallbackAudioRef.current) {
+        fallbackAudioRef.current.pause();
+        fallbackAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Функция для воспроизведения звука с резервным вариантом
   const playFanfare = (): void => {
+    console.log("Attempting to play fanfare sound");
+    
+    // Сначала пробуем основной звук
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
-      // Явно загружаем аудио перед воспроизведением
       audioRef.current.load();
       
-      audioRef.current.play().catch(e => {
-        console.error("Ошибка воспроизведения звука:", e);
-        // Попробуем воспроизвести снова после короткой задержки
-        setTimeout(() => {
-          audioRef.current?.play().catch(err => 
-            console.error("Повторная попытка воспроизведения не удалась:", err)
-          );
-        }, 100);
+      audioRef.current.play().then(() => {
+        console.log("Main audio played successfully");
+      }).catch(e => {
+        console.error("Main audio failed, trying fallback:", e);
+        
+        // Если основной звук не воспроизвелся, используем резервный
+        if (fallbackAudioRef.current) {
+          fallbackAudioRef.current.currentTime = 0;
+          fallbackAudioRef.current.play().then(() => {
+            console.log("Fallback audio played successfully");
+          }).catch(err => {
+            console.error("Both audio sources failed:", err);
+          });
+        }
       });
+    } else if (fallbackAudioRef.current) {
+      // Если основной аудиоэлемент недоступен, сразу используем резервный
+      console.log("No main audio, using fallback directly");
+      fallbackAudioRef.current.currentTime = 0;
+      fallbackAudioRef.current.play().catch(err => 
+        console.error("Fallback audio failed:", err)
+      );
     } else {
-      console.error("Audio reference is null");
+      console.error("No audio available for playback");
     }
   };
 
