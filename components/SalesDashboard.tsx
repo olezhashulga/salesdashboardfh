@@ -80,7 +80,20 @@ const SalesDashboard: React.FC = () => {
   const playFanfare = (): void => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(e => console.log("Ошибка воспроизведения звука:", e));
+      // Явно загружаем аудио перед воспроизведением
+      audioRef.current.load();
+      
+      audioRef.current.play().catch(e => {
+        console.error("Ошибка воспроизведения звука:", e);
+        // Попробуем воспроизвести снова после короткой задержки
+        setTimeout(() => {
+          audioRef.current?.play().catch(err => 
+            console.error("Повторная попытка воспроизведения не удалась:", err)
+          );
+        }, 100);
+      });
+    } else {
+      console.error("Audio reference is null");
     }
   };
 
@@ -338,8 +351,10 @@ const SalesDashboard: React.FC = () => {
       {/* Аудио-элемент для воспроизведения фанфар */}
       <audio 
         ref={audioRef} 
-        src="/torjestvennyie-fanfaryi-24685.mp3" 
+        src={`/torjestvennyie-fanfaryi-24685.mp3?v=${Date.now()}`}
         preload="auto"
+        crossOrigin="anonymous"
+        onError={(e) => console.error("Audio loading error:", e)}
       />
 
       {/* Уведомление о новой транзакции */}
